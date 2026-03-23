@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "apexwaters:item/great_white_shark_meat_raw"
+  }
+}

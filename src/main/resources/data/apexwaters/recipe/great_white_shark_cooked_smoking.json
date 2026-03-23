@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smoking",
+  "ingredient": {
+    "item": "apexwaters:great_white_shark_raw"
+  },
+  "result": {
+    "id": "apexwaters:great_white_shark_cooked",
+    "count": 1
+  },
+  "experience": 0.35,
+  "cookingtime": 150
+}

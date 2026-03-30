@@ -26,7 +26,7 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.TryFindWaterGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation;
+
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
@@ -35,6 +35,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -46,13 +48,17 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     
     public static final int ATTACK_ANIMATION_DURATION_TICKS = 40;
 
-    private static final double IDLE_SWIM_SPEED = 3.0D;
+    private static final double IDLE_SWIM_SPEED = 1.0D;
     private static final double TARGET_SWIM_SPEED_MULTIPLIER = 1.0D;
+    
+    private static final int PATH_LOOKAHEAD = 8;
 
-    private static final int IDLE_SWIM_RADIUS = 32;
-    private static final double IDLE_SWIM_MIN_DISTANCE = 32.0D;
+    private static final int IDLE_SWIM_RADIUS = 64;
+    private static final double IDLE_SWIM_MIN_DISTANCE = 48.0D;
+
     private static final int IDLE_SWIM_VERTICAL_RANGE = 6;
     private static final int IDLE_REPATH_INTERVAL = 30;
+
     private static final float IDLE_TURN_CONE_DEGREES = 70.0F;
     private static final float MAX_YAW_CHANGE_PER_TICK = 4.0F;
     private static final float MAX_PITCH_CHANGE_PER_TICK = 2.0F;
@@ -104,7 +110,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
                 .add(Attributes.MAX_HEALTH, 30.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.3)
                 .add(Attributes.ATTACK_DAMAGE, 8.0)
-                .add(Attributes.FOLLOW_RANGE, 32.0)
+                .add(Attributes.FOLLOW_RANGE, 48.0)
                 .add(Attributes.SCALE, 1.0);
     }
 
@@ -222,7 +228,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     @Override
     protected PathNavigation createNavigation(Level level) {
-        return new WaterBoundPathNavigation(this, level);
+        return new SharkPathNavigation(this, level);
     }
 
     @Override
@@ -278,6 +284,14 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
                 if (idleTarget != null) {
                     this.getNavigation().moveTo(idleTarget.x, idleTarget.y, idleTarget.z, IDLE_SWIM_SPEED);
                 }
+            }
+
+            // Steer toward a point several nodes ahead for smoother turning
+            Path path = this.getNavigation().getPath();
+            if (path != null && !this.getNavigation().isDone()) {
+                int lookaheadIndex = Math.min(path.getNextNodeIndex() + PATH_LOOKAHEAD, path.getNodeCount() - 1);
+                Vec3 lookaheadPos = Vec3.atBottomCenterOf(path.getNodePos(lookaheadIndex));
+                this.getMoveControl().setWantedPosition(lookaheadPos.x, lookaheadPos.y, lookaheadPos.z, IDLE_SWIM_SPEED);
             }
         }
 
@@ -343,6 +357,26 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
                 int drainRate = Config.HUNGER_DRAIN_RATE.getAsInt();
                 setHunger(Math.max(0, currentHunger - drainRate));
             }
+            
+            // --- DEBUG SCRIPT: VISUALIZE TARGET AND PATH ---
+            if (this.level() instanceof ServerLevel serverLevel && this.tickCount % 5 == 0) {
+                Path path = this.getNavigation().getPath();
+                if (path != null) {
+                    for (int i = path.getNextNodeIndex(); i < path.getNodeCount(); i++) {
+                        BlockPos nodePos = path.getNode(i).asBlockPos();
+                        serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER, nodePos.getX() + 0.5, nodePos.getY() + 0.5, nodePos.getZ() + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
+                    }
+                    if (path.getNodeCount() > 0) {
+                        BlockPos endPos = path.getNode(path.getNodeCount() - 1).asBlockPos();
+                        serverLevel.sendParticles(ParticleTypes.HEART, endPos.getX() + 0.5, endPos.getY() + 0.8, endPos.getZ() + 0.5, 2, 0.1, 0.1, 0.1, 0.0);
+                    }
+                }
+
+                if (this.getTarget() != null) {
+                    serverLevel.sendParticles(ParticleTypes.FLAME, this.getTarget().getX(), this.getTarget().getY() + this.getTarget().getBbHeight() + 0.5, this.getTarget().getZ(), 5, 0.1, 0.1, 0.1, 0.01);
+                }
+            }
+            // -----------------------------------------------
         }
     }
 

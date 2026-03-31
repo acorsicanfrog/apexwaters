@@ -1,11 +1,11 @@
 {
   "homepage": "https://modrinth.com/mod/apex-waters",
   "1.21.1": {
-    "1.0.1": "Shark pathfinding and movement goals had issues which are now fixed.",
+    "1.1.0": "Ported to Fabric. Added water particles during hunting. Fixed pathfinding issues. Removed full body attack animation.",
     "1.0.0": "Initial release."
   },
   "promos": {
-    "1.21.1-recommended": "1.0.1",
-    "1.21.1-latest": "1.0.1"
+    "1.21.1-recommended": "1.1.0",
+    "1.21.1-latest": "1.1.0"
   }
 }

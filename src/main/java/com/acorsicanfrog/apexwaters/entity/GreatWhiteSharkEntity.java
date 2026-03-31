@@ -35,7 +35,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.AABB;
@@ -46,11 +45,11 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     public static final float HITBOX_WIDTH = 7.0F;
     public static final float HITBOX_HEIGHT = 1.6F;
     
-    public static final int ATTACK_ANIMATION_DURATION_TICKS = 40;
+    public static final int BITE_DURATION_TICKS = 10;
 
     private static final double IDLE_SWIM_SPEED = 1.0D;
     private static final double TARGET_SWIM_SPEED_MULTIPLIER = 1.0D;
-    
+
     private static final int PATH_LOOKAHEAD = 8;
 
     private static final int IDLE_SWIM_RADIUS = 64;
@@ -68,18 +67,15 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     private static final double SURFACE_DIVE_FORCE = 0.045D;
     private static final double NEAR_SURFACE_DIVE_FORCE = 0.02D;
     private static final double SURFACE_BUFFER = 0.75D;
-    private static final double PARTICLE_SPEED_THRESHOLD = 0.03D;
     private static final double MODEL_UNIT_TO_BLOCKS = 1.0D / 16.0D;
     private static final double TAIL_SWAY_MODEL_UNITS = 12.0D;
     private static final double SWIM_ANIMATION_CYCLE_TICKS = 40.0D;
-    private static final double FIN_PARTICLE_Y_OFFSET_MODEL_UNITS = -16.0D;
-    private static final double TAIL_PARTICLE_Y_OFFSET_MODEL_UNITS = -40.0D;
     private static final double CHASE_PARTICLE_ANIMATION_SPEED_MULTIPLIER = 2.5D;
 
-    private static final Vec3 RIGHT_PECTORAL_FIN_TIP = new Vec3(-34.0D, 7.5D, -23.5D);
-    private static final Vec3 LEFT_PECTORAL_FIN_TIP = new Vec3(34.0D, 7.5D, -23.5D);
-    private static final Vec3 TOP_TAIL_FIN_TIP = new Vec3(0.0D, -18.0D, 68.0D);
-    private static final Vec3 BOTTOM_TAIL_FIN_TIP = new Vec3(0.0D, 12.5D, 67.0D);
+    private static final Vec3 RIGHT_PECTORAL_FIN_TIP = new Vec3(-36.0D, -19.0D, 11.0D);
+    private static final Vec3 LEFT_PECTORAL_FIN_TIP = new Vec3(36.0D, -19.0D, 11.0D);
+    private static final Vec3 TOP_TAIL_FIN_TIP = new Vec3(0.0D, 27.0D, -80.0D);
+    private static final Vec3 BOTTOM_TAIL_FIN_TIP = new Vec3(0.0D, -20.0D, -75.0D);
 
     private static final EntityDataAccessor<Integer> DATA_HUNGER = SynchedEntityData.defineId(GreatWhiteSharkEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DATA_CHASING = SynchedEntityData.defineId(GreatWhiteSharkEntity.class, EntityDataSerializers.BOOLEAN);
@@ -169,7 +165,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
         builder.define(DATA_HUNGER, Config.HUNGER_MAX.getAsInt());
         builder.define(DATA_CHASING, false);
         builder.define(DATA_LEGENDARY, false);
-        builder.define(DATA_LAST_ATTACK_ANIMATION_TICK, -ATTACK_ANIMATION_DURATION_TICKS);
+        builder.define(DATA_LAST_ATTACK_ANIMATION_TICK, -BITE_DURATION_TICKS);
     }
 
     @Override
@@ -202,6 +198,9 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     }
 
     private boolean canRetaliateAgainst(LivingEntity attacker) {
+        if (attacker instanceof net.minecraft.world.entity.player.Player player && (player.isCreative() || player.isSpectator())) {
+            return false;
+        }
         return this.isReachableAttackTarget(attacker);
     }
 
@@ -320,10 +319,10 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
             }
         }
 
-        // if (this.level().isClientSide && this.isInWater() && this.getDeltaMovement().lengthSqr() > PARTICLE_SPEED_THRESHOLD) {
         // if (this.level().isClientSide && this.isInWater()) {
-            // this.spawnFinTrailParticles();
-        // }
+        if (this.level().isClientSide && this.isInWater() && this.isChasing()) {
+            this.spawnFinTrailParticles();
+        }
 
         // Keep the shark deeper in the water so its large body does not breach almost entirely.
         if (this.isInWater()) {
@@ -358,25 +357,25 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
                 setHunger(Math.max(0, currentHunger - drainRate));
             }
             
-            // --- DEBUG SCRIPT: VISUALIZE TARGET AND PATH ---
-            if (this.level() instanceof ServerLevel serverLevel && this.tickCount % 5 == 0) {
-                Path path = this.getNavigation().getPath();
-                if (path != null) {
-                    for (int i = path.getNextNodeIndex(); i < path.getNodeCount(); i++) {
-                        BlockPos nodePos = path.getNode(i).asBlockPos();
-                        serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER, nodePos.getX() + 0.5, nodePos.getY() + 0.5, nodePos.getZ() + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
-                    }
-                    if (path.getNodeCount() > 0) {
-                        BlockPos endPos = path.getNode(path.getNodeCount() - 1).asBlockPos();
-                        serverLevel.sendParticles(ParticleTypes.HEART, endPos.getX() + 0.5, endPos.getY() + 0.8, endPos.getZ() + 0.5, 2, 0.1, 0.1, 0.1, 0.0);
-                    }
-                }
+            // // --- DEBUG CODE: VISUALIZE TARGET AND PATH ---
+            // if (this.level() instanceof ServerLevel serverLevel && this.tickCount % 5 == 0) {
+            //     Path path = this.getNavigation().getPath();
+            //     if (path != null) {
+            //         for (int i = path.getNextNodeIndex(); i < path.getNodeCount(); i++) {
+            //             BlockPos nodePos = path.getNode(i).asBlockPos();
+            //             serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER, nodePos.getX() + 0.5, nodePos.getY() + 0.5, nodePos.getZ() + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
+            //         }
+            //         if (path.getNodeCount() > 0) {
+            //             BlockPos endPos = path.getNode(path.getNodeCount() - 1).asBlockPos();
+            //             serverLevel.sendParticles(ParticleTypes.HEART, endPos.getX() + 0.5, endPos.getY() + 0.8, endPos.getZ() + 0.5, 2, 0.1, 0.1, 0.1, 0.0);
+            //         }
+            //     }
 
-                if (this.getTarget() != null) {
-                    serverLevel.sendParticles(ParticleTypes.FLAME, this.getTarget().getX(), this.getTarget().getY() + this.getTarget().getBbHeight() + 0.5, this.getTarget().getZ(), 5, 0.1, 0.1, 0.1, 0.01);
-                }
-            }
-            // -----------------------------------------------
+            //     if (this.getTarget() != null) {
+            //         serverLevel.sendParticles(ParticleTypes.FLAME, this.getTarget().getX(), this.getTarget().getY() + this.getTarget().getBbHeight() + 0.5, this.getTarget().getZ(), 5, 0.1, 0.1, 0.1, 0.01);
+            //     }
+            // }
+            // // -----------------------------------------------
         }
     }
 
@@ -384,7 +383,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     public boolean doHurtTarget(Entity target) {
         boolean hurt = super.doHurtTarget(target);
         if (hurt && target instanceof LivingEntity livingTarget) {
-            this.triggerAttackAnimation();
+            this.triggerBite();
 
             if (livingTarget.isDeadOrDying()) {
                 resetHunger();
@@ -415,19 +414,20 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
         return this.entityData.get(DATA_LEGENDARY);
     }
 
-    public boolean isPlayingAttackAnimation() {
-        return this.tickCount - this.getLastAttackAnimationTick() < ATTACK_ANIMATION_DURATION_TICKS;
+    public boolean isBiting() {
+        return this.tickCount - this.getLastBiteTick() < BITE_DURATION_TICKS;
     }
 
-    public float getAttackAnimationTime(float ageInTicks) {
-        return Math.max(0.0F, ageInTicks - this.getLastAttackAnimationTick());
+    public float getBiteProgress(float ageInTicks) {
+        float elapsed = ageInTicks - this.getLastBiteTick();
+        return Mth.clamp(elapsed / BITE_DURATION_TICKS, 0.0F, 1.0F);
     }
 
-    private int getLastAttackAnimationTick() {
+    private int getLastBiteTick() {
         return this.entityData.get(DATA_LAST_ATTACK_ANIMATION_TICK);
     }
 
-    private void triggerAttackAnimation() {
+    private void triggerBite() {
         this.entityData.set(DATA_LAST_ATTACK_ANIMATION_TICK, this.tickCount);
     }
 
@@ -463,45 +463,55 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     private void spawnFinTrailParticles() {
         double tailSway = this.getTailSwayModelOffset();
-        Vec3 finVerticalOffset = new Vec3(0.0D, FIN_PARTICLE_Y_OFFSET_MODEL_UNITS, 0.0D);
-        Vec3 tailVerticalOffset = new Vec3(0.0D, TAIL_PARTICLE_Y_OFFSET_MODEL_UNITS, 0.0D);
 
-        this.spawnTrailParticle(this.getParticlePositionFromModelOffset(RIGHT_PECTORAL_FIN_TIP.add(finVerticalOffset)));
-        this.spawnTrailParticle(this.getParticlePositionFromModelOffset(LEFT_PECTORAL_FIN_TIP.add(finVerticalOffset)));
-        this.spawnTrailParticle(this.getParticlePositionFromModelOffset(TOP_TAIL_FIN_TIP.add(tailSway, 0.0D, 0.0D).add(tailVerticalOffset)));
-        this.spawnTrailParticle(this.getParticlePositionFromModelOffset(BOTTOM_TAIL_FIN_TIP.add(tailSway, 0.0D, 0.0D).add(tailVerticalOffset)));
+        this.spawnTrailParticle(this.modelToWorld(RIGHT_PECTORAL_FIN_TIP.x, RIGHT_PECTORAL_FIN_TIP.y, RIGHT_PECTORAL_FIN_TIP.z));
+        this.spawnTrailParticle(this.modelToWorld(LEFT_PECTORAL_FIN_TIP.x, LEFT_PECTORAL_FIN_TIP.y, LEFT_PECTORAL_FIN_TIP.z));
+        this.spawnTrailParticle(this.modelToWorld(TOP_TAIL_FIN_TIP.x + tailSway, TOP_TAIL_FIN_TIP.y, TOP_TAIL_FIN_TIP.z));
+        this.spawnTrailParticle(this.modelToWorld(BOTTOM_TAIL_FIN_TIP.x + tailSway, BOTTOM_TAIL_FIN_TIP.y, BOTTOM_TAIL_FIN_TIP.z));
     }
 
     private void spawnTrailParticle(Vec3 position) {
         this.level().addParticle(ParticleTypes.DOLPHIN, position.x, position.y, position.z, 0.0D, 0.0D, 0.0D);
     }
 
-    private Vec3 getParticlePositionFromModelOffset(Vec3 modelOffset) {
-        Vec3 forward = this.getViewVector(0.0F);
-        if (forward.lengthSqr() < 1.0E-6D) {
-            forward = new Vec3(0.0D, 0.0D, 1.0D);
-        } else {
-            forward = forward.normalize();
-        }
-
-        Vec3 right = new Vec3(0.0D, 1.0D, 0.0D).cross(forward);
-        if (right.lengthSqr() < 1.0E-6D) {
-            right = new Vec3(1.0D, 0.0D, 0.0D);
-        } else {
-            right = right.normalize();
-        }
-
-        Vec3 up = forward.cross(right).normalize();
+    /**
+     * Transforms a point from Blockbench model space to world space.
+     *
+     * Model space: X+ = entity left, Y+ = down, Z+ = backward (tail).
+     * Anchored to the bounding box center so it adjusts for scale and BB offset.
+     */
+    private Vec3 modelToWorld(double modelX, double modelY, double modelZ) {
         double scale = this.getAttributeValue(Attributes.SCALE) * MODEL_UNIT_TO_BLOCKS;
 
-        return this.position()
-                .add(right.scale(-modelOffset.x * scale))
-                .add(up.scale(-modelOffset.y * scale))
-                .add(forward.scale(-modelOffset.z * scale));
+        // Model space -> entity-local (facing +Z, Y+ = up)
+        double lx =  -modelX * scale;
+        double ly = modelY * scale;
+        double lz = modelZ * scale;
+
+        // Pitch rotation (around local X axis)
+        float pitchRad = this.getXRot() * ((float) Math.PI / 180.0F);
+        float cp = Mth.cos(pitchRad);
+        float sp = Mth.sin(pitchRad);
+        double py = ly * cp - lz * sp;
+        double pz = ly * sp + lz * cp;
+
+        // Yaw rotation (around world Y axis)
+        float yawRad = this.getYRot() * ((float) Math.PI / 180.0F);
+        float cy = Mth.cos(yawRad);
+        float sy = Mth.sin(yawRad);
+        double wx = lx * cy - pz * sy;
+        double wz = lx * sy + pz * cy;
+
+        AABB box = this.getBoundingBox();
+        return new Vec3(
+                (box.minX + box.maxX) / 2.0 + wx,
+                (box.minY + box.maxY) / 2.0 + py,
+                (box.minZ + box.maxZ) / 2.0 + wz
+        );
     }
 
     private double getTailSwayModelOffset() {
-        double animationSpeedMultiplier = this.isPlayingAttackAnimation() || this.isChasing()
+        double animationSpeedMultiplier = this.isBiting() || this.isChasing()
                 ? CHASE_PARTICLE_ANIMATION_SPEED_MULTIPLIER
                 : 0.5D;
         double phase = this.tickCount * animationSpeedMultiplier * (Math.PI * 2.0D / SWIM_ANIMATION_CYCLE_TICKS);

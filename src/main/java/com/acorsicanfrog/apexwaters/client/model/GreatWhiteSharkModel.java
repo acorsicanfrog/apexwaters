@@ -24,7 +24,10 @@ public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntit
 	
 	private static final float SWIM_ANIMATION_SPEED_MULTIPLIER = 0.5F;
 	private static final float CHASE_ANIMATION_SPEED_MULTIPLIER = 2.5F;
-	private static final float BITE_ANIMATION_SPEED_MULTIPLIER = 2.5F;
+
+	private static final float UPPER_JAW_OPEN_ANGLE = -(float) Math.toRadians(25.0);
+	private static final float LOWER_JAW_OPEN_ANGLE = (float) Math.toRadians(35.0);
+	private static final float HUNT_MOUTH_OPEN_FRACTION = 0.4F;
 
 	private final ModelPart root;
 	private final ModelPart section1;
@@ -362,17 +365,32 @@ public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntit
 	@Override
 	public void setupAnim(GreatWhiteSharkEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
 		this.root().getAllParts().forEach(ModelPart::resetPose);
-		
-		boolean playingAttackAnimation = entity.isPlayingAttackAnimation();
+
 		boolean chasing = entity.isChasing();
+		float animationSpeedMultiplier = chasing ? CHASE_ANIMATION_SPEED_MULTIPLIER : SWIM_ANIMATION_SPEED_MULTIPLIER;
+		long animationTime = (long)(ageInTicks * 50.0F * animationSpeedMultiplier);
 
-		AnimationDefinition animation = playingAttackAnimation ? GreatWhiteSharkAnimations.ATTACK_BITE : GreatWhiteSharkAnimations.SWIM_DEFAULT;
+		KeyframeAnimations.animate(this, GreatWhiteSharkAnimations.SWIM_DEFAULT, animationTime, 1.0F, this.animationCache);
 
-		float animationTicks = playingAttackAnimation ? entity.getAttackAnimationTime(ageInTicks) : ageInTicks;
-		float animationSpeedMultiplier = playingAttackAnimation ? BITE_ANIMATION_SPEED_MULTIPLIER : (chasing ? CHASE_ANIMATION_SPEED_MULTIPLIER : SWIM_ANIMATION_SPEED_MULTIPLIER);
+		// Jaw control: bite snaps open then closes, hunting holds mouth partially open
+		float mouthOpen = 0.0F;
+		if (entity.isBiting()) {
+			float biteProgress = entity.getBiteProgress(ageInTicks);
+			// Quick open (0-0.3), hold (0.3-0.5), close (0.5-1.0)
+			if (biteProgress < 0.3F) {
+				mouthOpen = biteProgress / 0.3F;
+			} else if (biteProgress < 0.5F) {
+				mouthOpen = 1.0F;
+			} else {
+				mouthOpen = 1.0F - (biteProgress - 0.5F) / 0.5F;
+			}
+		} else if (chasing) {
+			mouthOpen = HUNT_MOUTH_OPEN_FRACTION;
+		}
 
-		long animationTime = (long)(animationTicks * 50.0F * animationSpeedMultiplier);
-
-		KeyframeAnimations.animate(this, animation, animationTime, 1.0F, this.animationCache);
+		if (mouthOpen > 0.0F) {
+			this.Tetehaut.xRot += UPPER_JAW_OPEN_ANGLE * mouthOpen;
+			this.Tetebas.xRot += LOWER_JAW_OPEN_ANGLE * mouthOpen;
+		}
 	}
 }

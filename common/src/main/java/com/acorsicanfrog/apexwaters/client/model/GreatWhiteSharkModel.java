@@ -2,10 +2,9 @@ package com.acorsicanfrog.apexwaters.client.model;
 
 import com.acorsicanfrog.apexwaters.ApexWatersCommon;
 import com.acorsicanfrog.apexwaters.client.animation.GreatWhiteSharkAnimations;
-import com.acorsicanfrog.apexwaters.entity.GreatWhiteSharkEntity;
-import net.minecraft.client.animation.AnimationDefinition;
-import net.minecraft.client.animation.KeyframeAnimations;
-import net.minecraft.client.model.HierarchicalModel;
+import com.acorsicanfrog.apexwaters.client.renderer.GreatWhiteSharkRenderState;
+import net.minecraft.client.animation.KeyframeAnimation;
+import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -14,18 +13,16 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
-import net.minecraft.resources.ResourceLocation;
-import org.joml.Vector3f;
+import net.minecraft.resources.Identifier;
 
 @SuppressWarnings("unused")
-public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntity> 
+public class GreatWhiteSharkModel extends EntityModel<GreatWhiteSharkRenderState> 
 {
-	public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark"), "main");
+	public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark"), "main");
 	
 	private static final float SWIM_ANIMATION_SPEED_MULTIPLIER = 0.5F;
 	private static final float CHASE_ANIMATION_SPEED_MULTIPLIER = 2.5F;
 
-	private final ModelPart root;
 	private final ModelPart section1;
 	private final ModelPart Tetefull;
 	private final ModelPart Tetehaut;
@@ -53,10 +50,12 @@ public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntit
 	private final ModelPart Section6;
 	private final ModelPart nageoirearrierehaut3;
 	private final ModelPart nageoirearrierebas3;
-	private final Vector3f animationCache = new Vector3f();
+
+	private final KeyframeAnimation swimDefaultAnimation;
+	private final KeyframeAnimation swimChaseAnimation;
 
 	public GreatWhiteSharkModel(ModelPart root) {
-		this.root = root;
+		super(root);
 		this.section1 = root.getChild("section1");
 		this.Tetefull = this.section1.getChild("Tetefull");
 		this.Tetehaut = this.Tetefull.getChild("Tetehaut");
@@ -84,6 +83,9 @@ public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntit
 		this.Section6 = this.Section5.getChild("Section6");
 		this.nageoirearrierehaut3 = this.Section6.getChild("nageoirearrierehaut3");
 		this.nageoirearrierebas3 = this.Section6.getChild("nageoirearrierebas3");
+
+		this.swimDefaultAnimation = GreatWhiteSharkAnimations.SWIM_DEFAULT.bake(root);
+		this.swimChaseAnimation = GreatWhiteSharkAnimations.SWIM_CHASE.bake(root);
 	}
 
 	public static LayerDefinition createBodyLayer() {
@@ -354,22 +356,17 @@ public class GreatWhiteSharkModel extends HierarchicalModel<GreatWhiteSharkEntit
 	}
 
 	@Override
-	public ModelPart root() {
-		return this.root;
-	}
+	public void setupAnim(GreatWhiteSharkRenderState renderState) {
+		super.setupAnim(renderState);
 
-	@Override
-	public void setupAnim(GreatWhiteSharkEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-		this.root().getAllParts().forEach(ModelPart::resetPose);
-
-		boolean chasing = entity.isChasing();
+		boolean chasing = renderState.isChasing;
 		float animationSpeedMultiplier = chasing ? CHASE_ANIMATION_SPEED_MULTIPLIER : SWIM_ANIMATION_SPEED_MULTIPLIER;
-		long animationTime = (long)(ageInTicks * 50.0F * animationSpeedMultiplier);
+		long animationTime = (long)(renderState.ageInTicks * 50.0F * animationSpeedMultiplier);
 
 		if (chasing) {
-			KeyframeAnimations.animate(this, GreatWhiteSharkAnimations.SWIM_CHASE, animationTime, 1.0F, this.animationCache);
+			this.swimChaseAnimation.apply(animationTime, 1.0F);
 		} else {
-			KeyframeAnimations.animate(this, GreatWhiteSharkAnimations.SWIM_DEFAULT, animationTime, 1.0F, this.animationCache);
+			this.swimDefaultAnimation.apply(animationTime, 1.0F);
 		}
 	}
 }

@@ -11,7 +11,9 @@ import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacements;
@@ -39,33 +41,42 @@ public class ApexWatersFabric implements ModInitializer {
         // Register entity type
         GREAT_WHITE_SHARK = Registry.register(
                 BuiltInRegistries.ENTITY_TYPE,
-                ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark"),
+                Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark"),
                 EntityType.Builder.of(GreatWhiteSharkEntity::new, MobCategory.WATER_CREATURE)
                         .sized(GreatWhiteSharkEntity.HITBOX_WIDTH, GreatWhiteSharkEntity.HITBOX_HEIGHT)
                         .clientTrackingRange(10)
-                        .build(ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark").toString())
+                        .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark")))
         );
 
         // Register items
+        Identifier spawnEggId = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_spawn_egg");
         SPAWN_EGG = Registry.register(
                 BuiltInRegistries.ITEM,
-                ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_spawn_egg"),
-                new SpawnEggItem(GREAT_WHITE_SHARK, 0x6B7B8D, 0xFFFFFF, new Item.Properties())
+                spawnEggId,
+                new SpawnEggItem(new Item.Properties()
+                        .setId(ResourceKey.create(Registries.ITEM, spawnEggId))
+                        .spawnEgg(GREAT_WHITE_SHARK))
         );
 
+        Identifier rawId = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_raw");
         RAW_SHARK_MEAT = Registry.register(
                 BuiltInRegistries.ITEM,
-                ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_raw"),
-                new Item(new Item.Properties().food(new FoodProperties.Builder()
+                rawId,
+                new Item(new Item.Properties()
+                        .setId(ResourceKey.create(Registries.ITEM, rawId))
+                        .food(new FoodProperties.Builder()
                         .nutrition(3)
                         .saturationModifier(0.3F)
                         .build()))
         );
 
+        Identifier cookedId = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_cooked");
         COOKED_SHARK_MEAT = Registry.register(
                 BuiltInRegistries.ITEM,
-                ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark_cooked"),
-                new Item(new Item.Properties().food(new FoodProperties.Builder()
+                cookedId,
+                new Item(new Item.Properties()
+                        .setId(ResourceKey.create(Registries.ITEM, cookedId))
+                        .food(new FoodProperties.Builder()
                         .nutrition(8)
                         .saturationModifier(0.8F)
                         .build()))
@@ -101,8 +112,7 @@ public class ApexWatersFabric implements ModInitializer {
         SharkSpawner spawner = new SharkSpawner();
         ServerTickEvents.END_WORLD_TICK.register(level -> {
             if (level.dimension() == Level.OVERWORLD) {
-                boolean canSpawnFriendlies = level.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING);
-                spawner.tick(level, false, canSpawnFriendlies);
+                spawner.tick(level, false);
             }
         });
     }

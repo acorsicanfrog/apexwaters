@@ -5,7 +5,6 @@ import com.acorsicanfrog.apexwaters.config.ApexWatersConfig;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -16,9 +15,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -30,15 +29,13 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.TryFindWaterGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.animal.WaterAnimal;
+import net.minecraft.world.entity.animal.fish.WaterAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.vehicle.Boat;
+import net.minecraft.world.entity.vehicle.boat.Boat;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -54,8 +51,6 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     private static final double IDLE_SWIM_SPEED = 1.0D;
     private static final double TARGET_SWIM_SPEED_MULTIPLIER = 1.0D;
-
-    private static final int PATH_LOOKAHEAD = 8;
 
     private static final int IDLE_SWIM_RADIUS = 64;
     private static final double IDLE_SWIM_MIN_DISTANCE = 48.0D;
@@ -90,19 +85,19 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     private static final double CULLING_INFLATION_HORIZONTAL = 1.25D;
     private static final double CULLING_INFLATION_VERTICAL = 0.75D;
 
-    private static final ResourceLocation CONFIG_HEALTH_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_health");
-    private static final ResourceLocation CONFIG_SPEED_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_speed");
-    private static final ResourceLocation CONFIG_DAMAGE_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_damage");
-    private static final ResourceLocation CONFIG_SCALE_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_scale");
-    private static final ResourceLocation LEGENDARY_HEALTH_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "legendary_health");
-    private static final ResourceLocation LEGENDARY_DAMAGE_ID = ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "legendary_damage");
+    private static final Identifier CONFIG_HEALTH_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_health");
+    private static final Identifier CONFIG_SPEED_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_speed");
+    private static final Identifier CONFIG_DAMAGE_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_damage");
+    private static final Identifier CONFIG_SCALE_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "config_scale");
+    private static final Identifier LEGENDARY_HEALTH_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "legendary_health");
+    private static final Identifier LEGENDARY_DAMAGE_ID = Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "legendary_damage");
 
     private int hungerTickCounter = 0;
 
     public GreatWhiteSharkEntity(EntityType<? extends GreatWhiteSharkEntity> type, Level level) {
         super(type, level);
-        this.moveControl = new SmoothSwimmingMoveControl(this, 85, 10, 0.4F, 0.5F, true);
-        this.lookControl = new SmoothSwimmingLookControl(this, 10);
+        this.moveControl = new SmoothSwimmingMoveControl(this, 85, 3, 0.4F, 0.5F, true);
+        this.lookControl = new SmoothSwimmingLookControl(this, 3);
         this.setPathfindingMalus(PathType.WATER, 0.0F);
     }
 
@@ -117,7 +112,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     @Override
     @Nullable
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType spawnType, @Nullable SpawnGroupData spawnData) {
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnType, @Nullable SpawnGroupData spawnData) {
         this.applyConfigAttributes();
         this.applyRandomScale();
         this.setHealth(this.getMaxHealth());
@@ -162,7 +157,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
         applyModifier(Attributes.ATTACK_DAMAGE, LEGENDARY_DAMAGE_ID, 1.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 
-    private void applyModifier(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, ResourceLocation id, double amount, AttributeModifier.Operation operation) {
+    private void applyModifier(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, Identifier id, double amount, AttributeModifier.Operation operation) {
         AttributeInstance instance = this.getAttribute(attribute);
         if (instance != null) {
             instance.removeModifier(id);
@@ -170,7 +165,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
         }
     }
 
-    private void removeModifier(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, ResourceLocation id) {
+    private void removeModifier(net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute, Identifier id) {
         AttributeInstance instance = this.getAttribute(attribute);
         if (instance != null) {
             instance.removeModifier(id);
@@ -191,7 +186,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
         this.goalSelector.addGoal(0, new TryFindWaterGoal(this));
         this.goalSelector.addGoal(1, new MeleeAttackGoal(this, TARGET_SWIM_SPEED_MULTIPLIER, true));
 
-        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false, this::shouldTarget));
+        this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false, (target, serverLevel) -> this.shouldTarget(target)));
     }
 
     private boolean shouldTarget(LivingEntity target) {
@@ -249,20 +244,15 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     }
 
     @Override
-    protected AABB makeBoundingBox() {
-        return super.makeBoundingBox().move(0.0D, 0.95D, 0.0D);
+    protected AABB makeBoundingBox(Vec3 pos) {
+        return super.makeBoundingBox(pos).move(0.0D, 0.95D, 0.0D);
     }
 
     @Override
-    public AABB getBoundingBoxForCulling() {
-        return this.getBoundingBox().inflate(CULLING_INFLATION_HORIZONTAL, CULLING_INFLATION_VERTICAL, CULLING_INFLATION_HORIZONTAL);
-    }
+    public boolean hurtServer(net.minecraft.server.level.ServerLevel serverLevel, DamageSource source, float amount) {
+        boolean hurt = super.hurtServer(serverLevel, source, amount);
 
-    @Override
-    public boolean hurt(DamageSource source, float amount) {
-        boolean hurt = super.hurt(source, amount);
-
-        if (hurt && !this.level().isClientSide && this.getTarget() == null) {
+        if (hurt && this.getTarget() == null) {
             LivingEntity attacker = this.resolveAttacker(source);
             if (attacker != null && attacker.isAlive() && this.canRetaliateAgainst(attacker)) {
                 this.setTarget(attacker);
@@ -275,7 +265,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
-        double size = this.getBoundingBoxForCulling().getSize();
+        double size = this.getBoundingBox().inflate(CULLING_INFLATION_HORIZONTAL, CULLING_INFLATION_VERTICAL, CULLING_INFLATION_HORIZONTAL).getSize();
         if (Double.isNaN(size)) {
             size = 1.0D;
         }
@@ -288,10 +278,11 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     public void tick() {
         super.tick();
 
+        this.setYRot(Mth.wrapDegrees(this.getYRot()));
         this.yBodyRot = this.getYRot();
         this.yHeadRot = this.getYRot();
 
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide()) {
             this.setChasing(false);
 
             if (this.isInWater() && this.getTarget() == null && this.getNavigation().isDone() && this.tickCount % IDLE_REPATH_INTERVAL == 0) {
@@ -300,16 +291,9 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
                     this.getNavigation().moveTo(idleTarget.x, idleTarget.y, idleTarget.z, IDLE_SWIM_SPEED);
                 }
             }
-
-            Path path = this.getNavigation().getPath();
-            if (path != null && !this.getNavigation().isDone()) {
-                int lookaheadIndex = Math.min(path.getNextNodeIndex() + PATH_LOOKAHEAD, path.getNodeCount() - 1);
-                Vec3 lookaheadPos = Vec3.atBottomCenterOf(path.getNodePos(lookaheadIndex));
-                this.getMoveControl().setWantedPosition(lookaheadPos.x, lookaheadPos.y, lookaheadPos.z, IDLE_SWIM_SPEED);
-            }
         }
 
-        if (!this.level().isClientSide && this.isInWater() && this.getTarget() != null && this.getTarget().isAlive()) {
+        if (!this.level().isClientSide() && this.isInWater() && this.getTarget() != null && this.getTarget().isAlive()) {
             this.setChasing(true);
             LivingEntity target = this.getTarget();
             double dx = target.getX() - this.getX();
@@ -333,7 +317,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
             }
         }
 
-        if (this.level().isClientSide && this.isInWater() && this.isChasing()) {
+        if (this.level().isClientSide() && this.isInWater() && this.isChasing()) {
             this.spawnFinTrailParticles();
         }
 
@@ -360,7 +344,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
             }
         }
 
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide()) {
             hungerTickCounter++;
             if (hungerTickCounter >= 20) {
                 hungerTickCounter = 0;
@@ -370,7 +354,7 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
             }
 
             // // --- DEBUG CODE: VISUALIZE TARGET AND PATH ---
-            // if (this.level() instanceof ServerLevel serverLevel && this.tickCount % 5 == 0) {
+            // if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel && this.tickCount % 5 == 0) {
             //     Path path = this.getNavigation().getPath();
             //     if (path != null) {
             //         for (int i = path.getNextNodeIndex(); i < path.getNodeCount(); i++) {
@@ -392,8 +376,8 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     }
 
     @Override
-    public boolean doHurtTarget(Entity target) {
-        boolean hurt = super.doHurtTarget(target);
+    public boolean doHurtTarget(net.minecraft.server.level.ServerLevel serverLevel, Entity target) {
+        boolean hurt = super.doHurtTarget(serverLevel, target);
         if (hurt && target instanceof LivingEntity livingTarget) {
             this.triggerBite();
 
@@ -559,22 +543,19 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
-        super.addAdditionalSaveData(compound);
-        compound.putInt("SharkHunger", getHunger());
-        compound.putBoolean("LegendaryShark", this.isLegendaryShark());
+    public void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putInt("SharkHunger", getHunger());
+        output.putBoolean("LegendaryShark", this.isLegendaryShark());
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
-        super.readAdditionalSaveData(compound);
-        if (compound.contains("SharkHunger")) {
-            setHunger(compound.getInt("SharkHunger"));
-        }
-        if (compound.contains("LegendaryShark")) {
-            boolean legendary = compound.getBoolean("LegendaryShark");
-            this.setLegendaryShark(legendary);
-            this.setLegendaryAttributes(legendary);
+    public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput input) {
+        super.readAdditionalSaveData(input);
+        input.getInt("SharkHunger").ifPresent(this::setHunger);
+        if (input.getBooleanOr("LegendaryShark", false)) {
+            this.setLegendaryShark(true);
+            this.setLegendaryAttributes(true);
         }
     }
 

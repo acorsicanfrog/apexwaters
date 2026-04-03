@@ -5,23 +5,23 @@ import com.acorsicanfrog.apexwaters.config.ApexWatersConfig;
 import com.acorsicanfrog.apexwaters.entity.GreatWhiteSharkEntity;
 import com.acorsicanfrog.apexwaters.entity.SharkSpawner;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacementTypes;
-import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
@@ -42,22 +42,22 @@ public class ApexWatersNeoForge {
             ENTITY_TYPES.register("great_white_shark", () -> EntityType.Builder.of(GreatWhiteSharkEntity::new, MobCategory.WATER_CREATURE)
                     .sized(GreatWhiteSharkEntity.HITBOX_WIDTH, GreatWhiteSharkEntity.HITBOX_HEIGHT)
                     .clientTrackingRange(10)
-                    .build(ResourceLocation.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark").toString()));
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(ApexWatersCommon.MOD_ID, "great_white_shark"))));
 
     // Items
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ApexWatersCommon.MOD_ID);
 
-    public static final DeferredItem<Item> GREAT_WHITE_SHARK_SPAWN_EGG = ITEMS.register("great_white_shark_spawn_egg",
-            () -> new DeferredSpawnEggItem(GREAT_WHITE_SHARK, 0x6B7B8D, 0xFFFFFF, new Item.Properties()));
+    public static final DeferredItem<Item> GREAT_WHITE_SHARK_SPAWN_EGG = ITEMS.registerItem("great_white_shark_spawn_egg",
+            props -> new SpawnEggItem(props.spawnEgg(GREAT_WHITE_SHARK.get())));
 
     public static final DeferredItem<Item> RAW_SHARK_MEAT = ITEMS.registerSimpleItem("great_white_shark_raw",
-            new Item.Properties().food(new FoodProperties.Builder()
+            () -> new Item.Properties().food(new FoodProperties.Builder()
                     .nutrition(3)
                     .saturationModifier(0.3F)
                     .build()));
 
     public static final DeferredItem<Item> COOKED_SHARK_MEAT = ITEMS.registerSimpleItem("great_white_shark_cooked",
-            new Item.Properties().food(new FoodProperties.Builder()
+            () -> new Item.Properties().food(new FoodProperties.Builder()
                     .nutrition(8)
                     .saturationModifier(0.8F)
                     .build()));

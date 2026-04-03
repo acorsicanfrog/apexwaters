@@ -5,10 +5,10 @@ import com.acorsicanfrog.apexwaters.config.ApexWatersConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
-import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.CustomSpawner;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
@@ -17,18 +17,16 @@ public class SharkSpawner implements CustomSpawner {
     private int tickCounter;
 
     @Override
-    public int tick(ServerLevel level, boolean spawnEnemies, boolean spawnFriendlies) {
-        if (!spawnFriendlies || !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) {
-            return 0;
+    public void tick(ServerLevel level, boolean spawnEnemies) {
+        if (!level.getGameRules().get(GameRules.SPAWN_MOBS)) {
+            return;
         }
 
         if (++this.tickCounter < ApexWatersConfig.get().spawnInterval()) {
-            return 0;
+            return;
         }
 
         this.tickCounter = 0;
-
-        int spawned = 0;
 
         for (Player player : level.players()) {
             if (player.isSpectator()) continue;
@@ -50,25 +48,22 @@ public class SharkSpawner implements CustomSpawner {
 
             if (!level.getBiome(spawnPos).is(BiomeTags.IS_OCEAN)) continue;
             if (!level.getFluidState(spawnPos).is(Fluids.WATER)) continue;
-            if (!ApexWatersCommon.checkSharkSpawnRules(ApexWatersCommon.SHARK_ENTITY_TYPE.get(), level, MobSpawnType.NATURAL, spawnPos, level.random)) continue;
+            if (!ApexWatersCommon.checkSharkSpawnRules(ApexWatersCommon.SHARK_ENTITY_TYPE.get(), level, EntitySpawnReason.NATURAL, spawnPos, level.random)) continue;
 
             double minDist = ApexWatersConfig.get().spawnMinDistance();
             AABB searchBox = new AABB(spawnPos).inflate(minDist);
 
             if (!level.getEntitiesOfClass(GreatWhiteSharkEntity.class, searchBox).isEmpty()) continue;
 
-            GreatWhiteSharkEntity shark = ApexWatersCommon.SHARK_ENTITY_TYPE.get().create(level);
+            GreatWhiteSharkEntity shark = ApexWatersCommon.SHARK_ENTITY_TYPE.get().create(level, EntitySpawnReason.NATURAL);
 
             if (shark == null) continue;
 
-            shark.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, level.random.nextFloat() * 360.0F, 0.0F);
+            shark.snapTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, level.random.nextFloat() * 360.0F, 0.0F);
 
-            shark.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.NATURAL, null);
+            shark.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), EntitySpawnReason.NATURAL, null);
 
             level.addFreshEntityWithPassengers(shark);
-
-            spawned++;
         }
-        return spawned;
     }
 }

@@ -101,8 +101,8 @@ public class GreatWhiteSharkEntity extends WaterAnimal {
 
     public GreatWhiteSharkEntity(EntityType<? extends GreatWhiteSharkEntity> type, Level level) {
         super(type, level);
-        this.moveControl = new SmoothSwimmingMoveControl(this, 85, 10, 0.4F, 0.5F, true);
-        this.lookControl = new SmoothSwimmingLookControl(this, 10);
+        this.moveControl = new SmoothSwimmingMoveControl(this, 85, 3, 0.4F, 0.5F, true);
+        this.lookControl = new SmoothSwimmingLookControl(this, 3);
         this.setPathfindingMalus(PathType.WATER, 0.0F);
     }
 

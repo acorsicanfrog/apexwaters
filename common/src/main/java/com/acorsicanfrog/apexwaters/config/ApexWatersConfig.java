@@ -23,7 +23,7 @@ public abstract class ApexWatersConfig {
     public static final boolean DEFAULT_TARGET_PLAYERS_IN_BOATS = false;
     public static final boolean DEFAULT_ATTACK_HURT_PLAYERS = true;
     public static final boolean DEFAULT_RANDOM_START_HUNGER = true;
-    public static final int DEFAULT_SPAWN_INTERVAL = 1200;
+    public static final int DEFAULT_SPAWN_INTERVAL = 600;
     public static final int DEFAULT_SPAWN_CHANCE = 3;
     public static final int DEFAULT_SPAWN_MIN_DISTANCE = 64;
 

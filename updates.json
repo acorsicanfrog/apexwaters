@@ -1,11 +1,12 @@
 {
   "homepage": "https://modrinth.com/mod/apex-waters",
   "1.21.1": {
+    "1.1.1": "Ported to Minecraft 1.21.11. Increased spawn rate. Reduced rotation speed.",
     "1.1.0": "Ported to Fabric. Added water particles during hunting. Fixed pathfinding issues. Removed full body attack animation.",
     "1.0.0": "Initial release."
   },
   "promos": {
-    "1.21.1-recommended": "1.1.0",
-    "1.21.1-latest": "1.1.0"
+    "1.21.1-recommended": "1.1.1",
+    "1.21.1-latest": "1.1.1"
   }
 }
